@@ -8,7 +8,6 @@ Material de apoio para o Treinamento Profissional de Surveyor Offshore — Siste
 
 👉 **[Abrir o jogo](https://rafaelsantos1001.github.io/mini-game-transponder/)**
 
-> Ajuste este link depois de ativar o GitHub Pages, caso o nome do repositório seja diferente.
 
 Funciona no celular e no computador, direto no navegador. Não precisa instalar nada, criar conta nem fazer login.
 
