@@ -1,0 +1,478 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Mini-transponder no ROV · Jogo de estudo</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Barlow:wght@400;500;600&family=Barlow+Condensed:wght@600;700&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#e9f0f2; --card:#fbfdfd; --ink:#0b2a3b; --muted:#48606c; --line:#b9ccd3;
+  --accent:#0b6e8a; --accent-ink:#ffffff; --soft:#dcebf0;
+  --good:#146c3a; --goodbg:#d8f1e2; --bad:#a51d1d; --badbg:#fbe0df; --gold:#c98f00;
+  box-sizing:border-box;
+  padding-top:env(safe-area-inset-top,0px);
+  padding-bottom:env(safe-area-inset-bottom,0px);
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --bg:#071a26; --card:#0d2838; --ink:#e6f1f5; --muted:#93aebb; --line:#1e4155;
+    --accent:#f2b705; --accent-ink:#1a1400; --soft:#12374b;
+    --good:#6fe0a0; --goodbg:#0f3322; --bad:#ff9a95; --badbg:#3a1618; --gold:#f2b705;
+  }
+}
+:root[data-theme="dark"]{
+  --bg:#071a26; --card:#0d2838; --ink:#e6f1f5; --muted:#93aebb; --line:#1e4155;
+  --accent:#f2b705; --accent-ink:#1a1400; --soft:#12374b;
+  --good:#6fe0a0; --goodbg:#0f3322; --bad:#ff9a95; --badbg:#3a1618; --gold:#f2b705;
+}
+html{scroll-padding-top:env(safe-area-inset-top,0px)}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font:16px/1.5 "Barlow",system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;-webkit-text-size-adjust:100%}
+.wrap{max-width:720px;margin:0 auto;padding:16px 14px 40px}
+h1,h2,h3{font-family:"Barlow Condensed","Arial Narrow",system-ui,sans-serif;font-weight:700;letter-spacing:.01em;margin:0}
+h1{font-size:2rem;line-height:1.05}
+h2{font-size:1.45rem;line-height:1.15;margin-bottom:6px}
+.sub{color:var(--muted);margin:6px 0 14px}
+
+/* tabs */
+.tabs{display:grid;grid-template-columns:repeat(4,1fr);gap:6px;margin-bottom:12px}
+.tab{font:600 1.05rem "Barlow Condensed","Arial Narrow",system-ui,sans-serif;padding:10px 4px;border:1.5px solid var(--line);background:var(--card);color:var(--ink);border-radius:10px;cursor:pointer;min-height:44px}
+.tab[aria-selected="true"]{background:var(--accent);color:var(--accent-ink);border-color:var(--accent)}
+:focus-visible{outline:3px solid var(--accent);outline-offset:2px}
+
+/* scene */
+.scene-card{background:var(--card);border:1.5px solid var(--line);border-radius:14px;overflow:hidden;margin-bottom:12px}
+.scene-card.pop{animation:pop .5s ease-out}
+@keyframes pop{0%{box-shadow:0 0 0 0 var(--accent)}100%{box-shadow:0 0 0 12px transparent}}
+#scene{display:block;width:100%;height:auto}
+.cap{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:8px 12px;font-weight:600;border-top:1.5px solid var(--line)}
+.bar{height:6px;background:var(--soft)}
+.bar i{display:block;height:100%;width:0;background:var(--accent);transition:width .5s}
+
+/* panel */
+.panel{background:var(--card);border:1.5px solid var(--line);border-radius:14px;padding:16px}
+.panel p{margin:6px 0}
+.tip{background:var(--soft);border-radius:10px;padding:10px 12px;margin-top:10px}
+.row{display:flex;gap:10px;margin-top:14px;flex-wrap:wrap}
+.btn{font:600 1.05rem "Barlow",system-ui,sans-serif;padding:12px 18px;border-radius:10px;border:1.5px solid var(--accent);background:var(--accent);color:var(--accent-ink);cursor:pointer;min-height:46px;flex:1}
+.btn.ghost{background:transparent;color:var(--ink);border-color:var(--line)}
+.btn[disabled]{opacity:.45;cursor:not-allowed}
+.chips{display:flex;flex-wrap:wrap;gap:6px;margin-top:14px}
+.chip{width:38px;height:38px;border-radius:50%;border:1.5px solid var(--line);background:var(--card);color:var(--ink);font:700 1rem "Barlow Condensed",system-ui,sans-serif;cursor:pointer}
+.chip.done{background:var(--soft)}
+.chip.on{background:var(--accent);color:var(--accent-ink);border-color:var(--accent)}
+.meta{display:flex;justify-content:space-between;color:var(--muted);font-size:.95rem;margin-bottom:8px}
+.q{font-size:1.15rem;font-weight:600;margin:4px 0 8px}
+.opt{display:block;width:100%;text-align:left;font:inherit;color:var(--ink);background:var(--card);border:1.5px solid var(--line);border-radius:12px;padding:12px 14px;margin:8px 0;min-height:48px;cursor:pointer}
+.opt.ok{background:var(--goodbg);border-color:var(--good)}
+.opt.no{background:var(--badbg);border-color:var(--bad);animation:shake .35s}
+.opt[disabled]{cursor:default}
+@keyframes shake{25%{transform:translateX(-5px)}75%{transform:translateX(5px)}}
+.fb{border-radius:10px;padding:10px 12px;margin-top:10px}
+.fb.good{background:var(--goodbg);color:var(--ink);border-left:5px solid var(--good)}
+.fb.bad{background:var(--badbg);color:var(--ink);border-left:5px solid var(--bad)}
+.stars{font-size:2.2rem;color:var(--gold);letter-spacing:4px}
+.big{font:700 3rem/1 "Barlow Condensed",system-ui,sans-serif}
+.center{text-align:center}
+
+/* order game */
+ol.seq{list-style:none;margin:8px 0;padding:0}
+.oi{display:flex;align-items:center;gap:10px;width:100%;text-align:left;font:inherit;color:var(--ink);background:var(--soft);border:1.5px solid var(--line);border-radius:10px;padding:9px 12px;margin:6px 0;min-height:44px;cursor:pointer}
+.oi b{font:700 1.15rem "Barlow Condensed",system-ui,sans-serif;min-width:24px}
+.oi em{margin-left:auto;font-style:normal;font-weight:600}
+.oi.ok{background:var(--goodbg);border-color:var(--good)}
+.oi.no{background:var(--badbg);border-color:var(--bad)}
+.pool{display:flex;flex-wrap:wrap;gap:8px;margin-top:8px}
+.card{font:inherit;color:var(--ink);background:var(--card);border:1.5px solid var(--accent);border-radius:999px;padding:9px 14px;min-height:44px;cursor:pointer}
+.empty{color:var(--muted);border:1.5px dashed var(--line);border-radius:10px;padding:12px;text-align:center}
+.foot{color:var(--muted);font-size:.85rem;margin-top:18px}
+
+/* ---------- scene animation ---------- */
+#scene .fade{opacity:0;transition:opacity .6s}
+#scene.s1 #clip{opacity:1}
+#scene.s2 #radar{opacity:1}
+#scene.s3 #chip{opacity:1}
+#valve{transform-box:fill-box;transform-origin:center;transform:rotate(90deg);transition:transform .6s}
+#valve rect{fill:#22c55e;transition:fill .6s}
+#scene.s4 #valve{transform:rotate(0deg)}
+#scene.s4 #valve rect{fill:#dc2626}
+.puff{fill:#ffffff;opacity:0;animation:puff 1.6s ease-out infinite}
+.puff.b{animation-delay:.8s}
+#scene.s4 .puff{animation:none;opacity:0}
+@keyframes puff{0%{transform:translateY(0);opacity:.9}100%{transform:translateY(-14px);opacity:0}}
+#rubber{opacity:0;transform:translateY(-34px);transition:opacity .6s,transform .8s}
+#scene.s5 #rubber{opacity:.95;transform:translateY(0)}
+#led{fill:#64748b}
+#scene.s6 #led{fill:#22c55e;animation:blink 1s steps(2,jump-none) infinite}
+@keyframes blink{50%{opacity:.35}}
+.ping{fill:none;stroke:#22c55e;stroke-width:2;opacity:0;transform-box:fill-box;transform-origin:center}
+#scene.s6 .ping{animation:ping 2.2s ease-out infinite}
+#scene.s6 .ping.b{animation-delay:1.1s}
+@keyframes ping{0%{transform:scale(1);opacity:.8}100%{transform:scale(7);opacity:0}}
+#tbox,#twire{opacity:0;transition:opacity .6s}
+#scene.s7 #tbox,#scene.s7 #twire{opacity:1}
+#scene.s8 #twire{opacity:0}
+#wave{stroke-dasharray:8 4}
+#scene.s7 #wave{animation:march 1s linear infinite}
+@keyframes march{to{stroke-dashoffset:-12}}
+#xpdr{transition:transform 1.1s cubic-bezier(.5,0,.2,1)}
+#scene.s8 #xpdr{transform:translate(200px,-62px)}
+#straps{opacity:0;transition:opacity .5s .9s}
+#scene.s8 #straps{opacity:1}
+#safety,#rcable{fill:none;stroke-linecap:round;stroke-dasharray:100;stroke-dashoffset:100;transition:stroke-dashoffset 1s .2s}
+#scene.s9 #safety{stroke-dashoffset:0}
+#scene.s10 #rcable{stroke-dashoffset:0}
+#slabel{opacity:0;transition:opacity .5s .9s}
+#scene.s9 #slabel{opacity:1}
+.cap-plug{transform-box:fill-box;transform-origin:center;transform:scale(0);transition:transform .45s cubic-bezier(.3,1.6,.5,1)}
+#scene.s11 .cap-plug{transform:scale(1)}
+#scene.s11 .cap-plug.b{transition-delay:.25s}
+
+@media (prefers-reduced-motion: reduce){
+  *,*::before,*::after{animation-duration:.01ms!important;animation-iteration-count:1!important;transition-duration:.01ms!important;transition-delay:0s!important}
+}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>Mini-transponder no ROV</h1>
+  <p class="sub">Jogo de estudo · Survey de posicionamento hidroacústico. Aprenda o passo a passo da instalação e depois teste a memória.</p>
+
+  <div class="tabs" role="tablist" id="tabs">
+    <button class="tab" role="tab" data-mode="learn" aria-selected="true">Aprender</button>
+    <button class="tab" role="tab" data-mode="mission" aria-selected="false">Missão</button>
+    <button class="tab" role="tab" data-mode="quiz" aria-selected="false">Quiz</button>
+    <button class="tab" role="tab" data-mode="order" aria-selected="false">Ordenar</button>
+  </div>
+
+  <div class="scene-card" id="sceneCard">
+    <svg id="scene" viewBox="0 0 400 240" role="img" aria-label="Animação da instalação de um mini-transponder sobre um ROV amarelo">
+      <defs>
+        <linearGradient id="sky" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#bcd9ee"/><stop offset="1" stop-color="#e3f0f7"/></linearGradient>
+      </defs>
+      <rect width="400" height="240" fill="url(#sky)"/>
+      <!-- deck -->
+      <rect y="176" width="400" height="64" fill="#3f5566"/>
+      <g stroke="#587287" stroke-width="2"><line x1="0" y1="200" x2="400" y2="200"/><line x1="0" y1="222" x2="400" y2="222"/></g>
+      <!-- bancada -->
+      <rect x="14" y="168" width="196" height="9" rx="2" fill="#9fb4c2"/>
+      <rect x="24" y="177" width="7" height="63" fill="#9fb4c2"/><rect x="193" y="177" width="7" height="63" fill="#9fb4c2"/>
+
+      <!-- consulta de canais -->
+      <g id="radar" class="fade">
+        <rect x="10" y="6" width="74" height="20" rx="5" fill="#0b2a3b"/><text x="47" y="20" text-anchor="middle" font-size="11" fill="#fff" font-family="Barlow,sans-serif">UEP · CH 3</text>
+        <rect x="90" y="6" width="74" height="20" rx="5" fill="#0b2a3b"/><text x="127" y="20" text-anchor="middle" font-size="11" fill="#fff" font-family="Barlow,sans-serif">ROV · CH 5</text>
+        <rect x="170" y="6" width="74" height="20" rx="5" fill="#0b2a3b"/><text x="207" y="20" text-anchor="middle" font-size="11" fill="#fff" font-family="Barlow,sans-serif">ROV · CH 8</text>
+        <text x="10" y="42" font-size="11" fill="#0b2a3b" font-family="Barlow,sans-serif">canais em uso num raio de 3 milhas náuticas</text>
+      </g>
+
+      <!-- prancheta -->
+      <g id="clip" class="fade">
+        <rect x="28" y="120" width="34" height="46" rx="4" fill="#fff" stroke="#334155" stroke-width="2"/>
+        <rect x="37" y="115" width="16" height="9" rx="2" fill="#334155"/>
+        <path d="M35 144 l6 7 l13 -16" fill="none" stroke="#16a34a" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/>
+      </g>
+
+      <!-- caixa de teste -->
+      <g id="tbox">
+        <rect x="152" y="130" width="46" height="38" rx="4" fill="#1e293b"/>
+        <rect x="157" y="135" width="36" height="18" rx="2" fill="#0f172a"/>
+        <polyline id="wave" points="158,146 164,146 168,139 172,151 176,139 180,151 184,146 192,146" fill="none" stroke="#22c55e" stroke-width="1.8"/>
+        <text x="175" y="163" text-anchor="middle" font-size="9" fill="#cbd5e1" font-family="Barlow,sans-serif">TTC · DTU</text>
+      </g>
+      <path id="twire" d="M152 152 C144 152 140 152 131 152" fill="none" stroke="#0f172a" stroke-width="2.5"/>
+
+      <!-- ROV -->
+      <g id="rov">
+        <rect x="256" y="172" width="113" height="4" rx="2" fill="#334155"/>
+        <rect x="266" y="166" width="5" height="8" fill="#334155"/><rect x="354" y="166" width="5" height="8" fill="#334155"/>
+        <rect x="250" y="112" width="125" height="56" rx="10" fill="#f2b705" stroke="#8a6500" stroke-width="2"/>
+        <rect x="250" y="112" width="125" height="13" rx="7" fill="#ffd54a"/>
+        <circle cx="252" cy="142" r="10" fill="#334155"/><circle cx="373" cy="142" r="10" fill="#334155"/>
+        <rect x="284" y="106" width="52" height="8" rx="2" fill="#475569"/>
+        <rect x="338" y="120" width="30" height="42" rx="4" fill="#1e293b"/>
+        <circle cx="353" cy="130" r="4.5" fill="#64748b"/><circle cx="353" cy="141" r="4.5" fill="#64748b"/><circle cx="353" cy="152" r="4.5" fill="#64748b"/>
+        <circle class="cap-plug" cx="353" cy="141" r="6.5" fill="#f97316" stroke="#7c2d12" stroke-width="1.5"/>
+        <circle class="cap-plug b" cx="353" cy="152" r="6.5" fill="#f97316" stroke="#7c2d12" stroke-width="1.5"/>
+        <text x="300" y="150" text-anchor="middle" font-size="13" font-weight="700" fill="#5b4200" font-family="Barlow Condensed,Arial Narrow,sans-serif">ROV</text>
+      </g>
+      <g id="straps"><line x1="290" y1="96" x2="330" y2="96" stroke="#0f172a" stroke-width="3"/><line x1="290" y1="102" x2="330" y2="102" stroke="#0f172a" stroke-width="3"/></g>
+
+      <!-- transponder (grupo que se move para o ROV) -->
+      <g id="xpdr">
+        <circle class="ping" cx="110" cy="108" r="6"/><circle class="ping b" cx="110" cy="108" r="6"/>
+        <rect x="92" y="98" width="36" height="70" rx="10" fill="#ea580c" stroke="#9a3412" stroke-width="2"/>
+        <rect x="98" y="90" width="24" height="9" rx="3" fill="#c2410c"/>
+        <line x1="110" y1="90" x2="110" y2="84" stroke="#334155" stroke-width="3"/>
+        <g id="valve"><rect x="101" y="80" width="18" height="6" rx="3"/></g>
+        <circle class="puff" cx="106" cy="76" r="2.5"/><circle class="puff b" cx="114" cy="76" r="2.5"/>
+        <circle id="led" cx="110" cy="108" r="4"/>
+        <g id="rubber">
+          <rect x="88" y="118" width="44" height="50" rx="8" fill="#26303b" stroke="#0f172a" stroke-width="1.5"/>
+          <g stroke="#3d4b5a" stroke-width="2"><line x1="90" y1="130" x2="130" y2="130"/><line x1="90" y1="142" x2="130" y2="142"/><line x1="90" y1="154" x2="130" y2="154"/></g>
+        </g>
+        <g id="chip" class="fade">
+          <rect x="24" y="94" width="62" height="18" rx="9" fill="#16a34a"/>
+          <text x="55" y="107" text-anchor="middle" font-size="11" font-weight="600" fill="#fff" font-family="Barlow,sans-serif">CH 6 livre</text>
+        </g>
+      </g>
+
+      <!-- cabos -->
+      <path id="safety" pathLength="100" d="M328 66 C368 52 392 84 370 112" stroke="#a855f7" stroke-width="3"/>
+      <text id="slabel" x="330" y="44" font-size="10" fill="#6b21a8" font-family="Barlow,sans-serif">cabo de segurança</text>
+      <path id="rcable" pathLength="100" d="M322 106 C338 114 334 128 348 130" stroke="#0d9488" stroke-width="3"/>
+    </svg>
+    <div class="cap"><span id="cap">Antes de começar</span></div>
+    <div class="bar"><i id="prog"></i></div>
+  </div>
+
+  <div class="panel" id="panel"></div>
+
+  <p class="foot">Baseado na apostila de Treinamento Profissional · Surveyor Offshore (Sistemas de Embarcações e ROV), seção de calibração SSBL/USBL. Material de estudo: na operação real, siga sempre o procedimento da empresa e da embarcação.</p>
+</div>
+
+<script>
+const STEPS = [
+ {s:"Checar as manutenções preventivas", a:"Certificar-se de que as manutenções preventivas foram realizadas.",
+  tip:"Um transponder defeituoso pode passar despercebido e só aparecer depois. Trocá-lo significa retornar ao convés, então vale prevenir.",
+  wrong:[5,7,"Pular a checagem e resolver se falhar"]},
+ {s:"Consultar UEPs e navios de ROV", a:"Consultar as UEPs e navios de ROV na área (raio de 3 milhas náuticas) para obter os canais de seus transponders.",
+  tip:"Você precisa saber quais canais já estão em uso perto de você. O raio de consulta é de 3 milhas náuticas.",
+  wrong:[2,10,"Consultar só as embarcações a 300 m"]},
+ {s:"Escolher um canal livre", a:"Escolher um canal para seu transponder que não sofra interferência das embarcações próximas.",
+  tip:"Com a lista de canais da vizinhança em mãos, escolha um canal livre. No desenho, CH 3, 5 e 8 estão ocupados, então o CH 6 serve.",
+  wrong:["Usar o mesmo canal do navio vizinho para ganhar sinal",3,6]},
+ {s:"Fechar a válvula de alívio", a:"Fechar a válvula de alívio do transponder.",
+  tip:"Veja a alavanca girar de aberta (verde) para fechada (vermelha). Confira que ficou fechada antes de seguir.",
+  wrong:["Deixar a válvula de alívio aberta",4,8]},
+ {s:"Envolver em borracha protetora", a:"Envolvê-lo em uma borracha protetora.",
+  tip:"A borracha protege o corpo do transponder durante o manuseio e a instalação.",
+  wrong:["Dispensar a borracha: o transponder é robusto",5,7]},
+ {s:"Ligar o transponder", a:"Ligar o transponder.",
+  tip:"O LED acende e o equipamento passa a emitir. Agora ele já pode ser testado.",
+  wrong:[7,"Ligar só depois que o ROV estiver no fundo",8]},
+ {s:"Fazer o teste de bancada", a:"Realizar teste de bancada (com TTC, DTU, Iwand etc.).",
+  tip:"O teste de bancada confirma que o equipamento responde antes de ele ir para o ROV.",
+  wrong:["Pular o teste e checar só no fundo",7,10]},
+ {s:"Conectar o transponder no ROV", a:"Conectar o transponder no ROV.",
+  tip:"Testado e aprovado, o transponder sobe no suporte do ROV e é fixado.",
+  wrong:[8,9,"Deixar o transponder solto sobre o ROV"]},
+ {s:"Preparar o cabo de segurança", a:"Preparar um cabo de segurança (e mantê-lo solecado, no ROV).",
+  tip:"Solecado quer dizer com folga, sem tensionar. Repare na curva do cabo roxo.",
+  wrong:["Prender o cabo de segurança bem esticado",9,10]},
+ {s:"Conectar o cabo do responder", a:"Se for um responder, conectar o respectivo cabo.",
+  tip:"Passo condicional: só se aplica quando o equipamento é um responder. Se for transponder, ele não existe.",
+  wrong:["Ignorar o cabo: o responder funciona sem ele","Trocar o responder por um transponder qualquer",10]},
+ {s:"Inserir dummy/switch plugs", a:"Inserir dummy/switch plugs nos penetradores que não estiverem sendo utilizados.",
+  tip:"Os penetradores livres (os dois de baixo, no painel) ficam fechados com os plugs laranja.",
+  wrong:["Deixar os penetradores livres, sem plug",0,3]}
+];
+
+const QUIZ = [
+ {q:"Qual o raio para consultar UEPs e navios de ROV e obter os canais dos transponders deles?", o:["300 metros","1 milha náutica","3 milhas náuticas","30 milhas náuticas"], c:2, e:"Consulta-se num raio de 3 milhas náuticas."},
+ {q:"Por que consultar as UEPs e os navios de ROV da área?", o:["Para pedir autorização de mergulho","Para obter os canais dos transponders deles","Para sincronizar os relógios","Para calibrar o giro"], c:1, e:"O objetivo é obter os canais em uso e evitar interferência."},
+ {q:"Como escolher o canal do seu transponder?", o:["O mesmo canal do navio mais próximo","O canal mais baixo do software","Um canal que não sofra interferência das embarcações próximas","Qualquer um: o SSBL resolve sozinho"], c:2, e:"Escolha um canal que não sofra interferência das embarcações próximas."},
+ {q:"O que fazer com a válvula de alívio do transponder?", o:["Deixar aberta","Fechar","Remover","Trocar por um plug"], c:1, e:"Fechar a válvula de alívio do transponder."},
+ {q:"Com o que o transponder é envolvido durante a instalação?", o:["Fita isolante","Borracha protetora","Espuma de flutuação","Manta térmica"], c:1, e:"Envolve-se o transponder em uma borracha protetora."},
+ {q:"Qual passo vem logo depois de ligar o transponder?", o:["Conectar no ROV","Teste de bancada","Inserir dummy plugs","Preparar o cabo de segurança"], c:1, e:"Liga-se o transponder e em seguida faz-se o teste de bancada."},
+ {q:"O teste de bancada pode ser feito com…", o:["TTC, DTU, Iwand etc.","Só o software de navegação","Só no fundo, com o ROV","Um multímetro"], c:0, e:"A apostila cita TTC, DTU, Iwand etc."},
+ {q:"Como deve ficar o cabo de segurança no ROV?", o:["Bem esticado","Solecado (com folga)","Enrolado no transponder","Não é necessário"], c:1, e:"Prepare o cabo de segurança e mantenha-o solecado no ROV."},
+ {q:"E se o equipamento for um responder?", o:["Ignorar o cabo","Conectar o respectivo cabo","Trocar por transponder","Aumentar a potência"], c:1, e:"Se for um responder, conecta-se o respectivo cabo."},
+ {q:"O que fazer com os penetradores que não estão em uso?", o:["Deixar abertos","Inserir dummy/switch plugs","Cobrir com fita","Conectar cabos extras"], c:1, e:"Inserem-se dummy/switch plugs nos penetradores não utilizados."},
+ {q:"Qual é o primeiro item do checklist?", o:["Ligar o transponder","Fechar a válvula","Certificar-se de que as manutenções preventivas foram realizadas","Escolher o canal"], c:2, e:"Tudo começa pela checagem das manutenções preventivas."},
+ {q:"Com que frequência se deve monitorar a bateria de um mini transponder?", o:["Uma vez por mês","Diariamente","Só na desmobilização","Nunca, ela é selada"], c:1, e:"O transponder pode estar com a bateria descarregada, então monitore isso diariamente."},
+ {q:"Se o transponder estiver defeituoso, o que fazer?", o:["Ignorar e testar depois","Retornar ao convés e trocá-lo","Só reiniciar o SSBL","Aumentar a potência do transceiver"], c:1, e:"Retorna-se ao convés e troca-se o transponder."},
+ {q:"O que vem logo antes de conectar o transponder no ROV?", o:["Teste de bancada","Consultar UEPs","Inserir dummy plugs","Fechar a válvula"], c:0, e:"O teste de bancada vem antes da conexão no ROV."},
+ {q:"Em que momento entram os dummy/switch plugs?", o:["No começo","No último passo da lista","Antes de ligar","Nunca"], c:1, e:"É o último item da lista de instalação."}
+];
+
+const $ = s => document.querySelector(s);
+const panel = $('#panel');
+const scene = $('#scene');
+const sceneCard = $('#sceneCard');
+let mode = 'learn';
+
+function shuffle(a){a=a.slice();for(let i=a.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[a[i],a[j]]=[a[j],a[i]];}return a;}
+function load(k){try{return JSON.parse(localStorage.getItem(k));}catch(e){return null;}}
+function save(k,v){try{localStorage.setItem(k,JSON.stringify(v));}catch(e){}}
+
+function setScene(n){
+  for(let i=1;i<=11;i++) scene.classList.toggle('s'+i, i<=n);
+  $('#prog').style.width = (n/11*100)+'%';
+  $('#cap').textContent = n===0 ? 'Antes de começar' : 'Passo '+n+' de 11 · '+STEPS[n-1].s;
+  sceneCard.classList.remove('pop'); void sceneCard.offsetWidth; if(n>0) sceneCard.classList.add('pop');
+}
+
+/* ---------- Aprender ---------- */
+let ln = 0;
+function renderLearn(){
+  sceneCard.hidden = false;
+  setScene(ln);
+  let body;
+  if(ln===0){
+    body = `<h2>Antes de começar</h2>
+      <p>São 11 passos para instalar um mini-transponder (ou responder) no ROV. Toque em <b>Próximo</b> e acompanhe a animação. Depois teste o que aprendeu nas outras abas.</p>`;
+  } else {
+    const st = STEPS[ln-1];
+    body = `<h2>${ln}. ${st.s}</h2><p>${st.a}</p><div class="tip">${st.tip}</div>`;
+  }
+  const chips = STEPS.map((_,i)=>`<button class="chip ${i+1===ln?'on':(i+1<ln?'done':'')}" data-act="goto" data-i="${i+1}" aria-label="Ir ao passo ${i+1}">${i+1}</button>`).join('');
+  panel.innerHTML = body + `<div class="row">
+      <button class="btn ghost" data-act="prev" ${ln===0?'disabled':''}>Anterior</button>
+      <button class="btn" data-act="${ln===11?'toMission':'next'}">${ln===11?'Jogar a Missão':'Próximo'}</button>
+    </div><div class="chips">${chips}</div>`;
+}
+
+/* ---------- Missão ---------- */
+let M;
+function startMission(){ M={i:0,err:0,opts:null,fb:null,solved:false}; renderMission(); }
+function renderMission(){
+  sceneCard.hidden = false;
+  if(M.i>=11) return endMission();
+  const st = STEPS[M.i];
+  if(!M.opts){
+    const wr = st.wrong.map(w => typeof w==='number' ? {t:STEPS[w].s, idx:w} : {t:w, idx:-1});
+    M.opts = shuffle([{t:st.s, ok:true, idx:M.i}, ...wr.map(o=>({...o, ok:false}))]).map(o=>({...o, state:''}));
+    M.fb = null; M.solved = false;
+  }
+  const opts = M.opts.map((o,k)=>`<button class="opt ${o.state}" data-act="pick" data-k="${k}" ${(o.state||M.solved)?'disabled':''}>${o.t}</button>`).join('');
+  let fb = '';
+  if(M.fb) fb = `<div class="fb ${M.fb.good?'good':'bad'}">${M.fb.text}</div>`;
+  panel.innerHTML = `<div class="meta"><span>Passo ${M.i+1} de 11</span><span>Erros: ${M.err}</span></div>
+    ${M.i===0?'<p class="tip" style="margin:0 0 10px">Nesta missão o equipamento é um <b>responder</b>, então o passo do cabo se aplica.</p>':''}
+    <div class="q">O que você faz agora?</div>${opts}${fb}
+    ${M.solved?`<div class="row"><button class="btn" data-act="mnext">${M.i===10?'Ver resultado':'Próximo passo'}</button></div>`:''}`;
+}
+function pickMission(k){
+  const o = M.opts[k]; if(o.state||M.solved) return;
+  if(o.ok){
+    o.state='ok'; M.solved=true; setScene(M.i+1);
+    M.fb = {good:true, text:'<b>Isso mesmo.</b> '+STEPS[M.i].tip};
+  } else {
+    o.state='no'; M.err++;
+    let why;
+    if(o.idx<0) why='Isso contraria o procedimento da apostila.';
+    else if(o.idx<M.i) why='Esse passo você já fez.';
+    else why='Esse passo existe, mas vem depois (é o nº '+(o.idx+1)+').';
+    M.fb = {good:false, text:'<b>Ainda não.</b> '+why+' Tente de novo.'};
+  }
+  renderMission();
+}
+function endMission(){
+  const stars = M.err===0?3:(M.err<=3?2:1);
+  const prev = load('best-mission');
+  const best = (prev===null||M.err<prev) ? M.err : prev; save('best-mission', best);
+  sceneCard.hidden = false;
+  panel.innerHTML = `<div class="center"><div class="stars">${'★'.repeat(stars)}${'☆'.repeat(3-stars)}</div>
+    <h2>Instalação concluída</h2>
+    <p>${M.err===0?'Sem nenhum erro. Você domina a sequência.':'Você fez '+M.err+' erro(s). Repita até zerar.'}</p>
+    <p class="sub">Melhor resultado: ${best} erro(s)</p></div>
+    <div class="row"><button class="btn ghost" data-act="mode" data-m="learn">Rever passos</button><button class="btn" data-act="mrestart">Jogar de novo</button></div>`;
+}
+
+/* ---------- Quiz ---------- */
+let Q;
+function startQuiz(){
+  Q = {list:shuffle(QUIZ).slice(0,10).map(q=>{
+        const opts = shuffle(q.o.map((t,i)=>({t,ok:i===q.c})));
+        return {q:q.q,e:q.e,opts,pick:-1};
+      }), i:0, score:0, streak:0, bestStreak:0};
+  renderQuiz();
+}
+function renderQuiz(){
+  sceneCard.hidden = true;
+  if(Q.i>=Q.list.length) return endQuiz();
+  const cur = Q.list[Q.i];
+  const answered = cur.pick>=0;
+  const opts = cur.opts.map((o,k)=>{
+    let cls=''; if(answered){ if(o.ok) cls='ok'; else if(k===cur.pick) cls='no'; }
+    return `<button class="opt ${cls}" data-act="qpick" data-k="${k}" ${answered?'disabled':''}>${o.t}</button>`;
+  }).join('');
+  const good = answered && cur.opts[cur.pick].ok;
+  panel.innerHTML = `<div class="meta"><span>Pergunta ${Q.i+1} de ${Q.list.length}</span><span>Acertos: ${Q.score} · Sequência: ${Q.streak}</span></div>
+    <div class="q">${cur.q}</div>${opts}
+    ${answered?`<div class="fb ${good?'good':'bad'}"><b>${good?'Correto.':'Não foi dessa vez.'}</b> ${cur.e}</div>
+    <div class="row"><button class="btn" data-act="qnext">${Q.i===Q.list.length-1?'Ver resultado':'Próxima'}</button></div>`:''}`;
+}
+function endQuiz(){
+  const n = Q.list.length, pct = Math.round(Q.score/n*100);
+  const prev = load('best-quiz'); const best = Math.max(prev||0, Q.score); save('best-quiz', best);
+  panel.innerHTML = `<div class="center"><div class="big">${Q.score}/${n}</div>
+    <h2>${pct>=90?'Nível surveyor sênior':pct>=70?'Muito bom':pct>=50?'Quase lá':'Vale rever os passos'}</h2>
+    <p>Maior sequência de acertos: ${Q.bestStreak}</p><p class="sub">Melhor pontuação: ${best}/${n}</p></div>
+    <div class="row"><button class="btn ghost" data-act="mode" data-m="learn">Rever passos</button><button class="btn" data-act="qrestart">Jogar de novo</button></div>`;
+}
+
+/* ---------- Ordenar ---------- */
+let O;
+function startOrder(){ O={pool:shuffle(STEPS.map((_,i)=>i)), seq:[], checked:false}; renderOrder(); }
+function renderOrder(){
+  sceneCard.hidden = true;
+  const seq = O.seq.map((si,pos)=>{
+    let cls='oi', extra='';
+    if(O.checked){ const ok = si===pos; cls+= ok?' ok':' no'; extra = ok?'✓':'vai no nº '+(si+1); }
+    return `<li><button class="${cls}" data-act="orm" data-pos="${pos}" ${O.checked?'disabled':''}><b>${pos+1}</b><span>${STEPS[si].s}</span><em>${extra}</em></button></li>`;
+  }).join('');
+  const pool = O.pool.map(si=>`<button class="card" data-act="oadd" data-si="${si}">${STEPS[si].s}</button>`).join('');
+  let result='';
+  if(O.checked){
+    const hits = O.seq.filter((si,pos)=>si===pos).length;
+    const prev = load('best-order'); const best = Math.max(prev||0,hits); save('best-order',best);
+    result = `<div class="fb ${hits===11?'good':'bad'}"><b>${hits} de 11 no lugar certo.</b> ${hits===11?'Sequência perfeita.':'Os itens em vermelho mostram a posição correta.'} Melhor: ${best}/11.</div>`;
+  }
+  panel.innerHTML = `<h2>Coloque os passos em ordem</h2>
+    <p class="sub" style="margin-top:0">Toque nos passos na sequência certa. Toque num passo já escolhido para devolvê-lo.</p>
+    <div class="meta"><span>Sua sequência</span><span>${O.seq.length}/11</span></div>
+    ${O.seq.length?`<ol class="seq">${seq}</ol>`:'<div class="empty">Nenhum passo escolhido ainda</div>'}
+    ${O.pool.length?`<div class="meta" style="margin-top:12px"><span>Passos disponíveis</span></div><div class="pool">${pool}</div>`:''}
+    ${result}
+    <div class="row">
+      ${O.checked?`<button class="btn" data-act="orestart">Embaralhar e tentar de novo</button>`
+        :`<button class="btn ghost" data-act="orestart">Recomeçar</button><button class="btn" data-act="ocheck" ${O.pool.length?'disabled':''}>Verificar</button>`}
+    </div>`;
+}
+
+/* ---------- Navegação ---------- */
+function setMode(m){
+  mode = m;
+  document.querySelectorAll('.tab').forEach(t=>t.setAttribute('aria-selected', t.dataset.mode===m));
+  if(m==='learn') renderLearn();
+  else if(m==='mission') { setScene(0); startMission(); }
+  else if(m==='quiz') startQuiz();
+  else startOrder();
+  window.scrollTo({top:0});
+}
+$('#tabs').addEventListener('click',e=>{ const b=e.target.closest('.tab'); if(b) setMode(b.dataset.mode); });
+
+panel.addEventListener('click',e=>{
+  const b = e.target.closest('[data-act]'); if(!b) return;
+  const d = b.dataset;
+  switch(d.act){
+    case 'next': ln=Math.min(11,ln+1); renderLearn(); break;
+    case 'prev': ln=Math.max(0,ln-1); renderLearn(); break;
+    case 'goto': ln=+d.i; renderLearn(); break;
+    case 'toMission': setMode('mission'); break;
+    case 'mode': setMode(d.m); break;
+    case 'pick': pickMission(+d.k); break;
+    case 'mnext': M.i++; M.opts=null; renderMission(); break;
+    case 'mrestart': setScene(0); startMission(); break;
+    case 'qpick': {
+      const cur=Q.list[Q.i]; if(cur.pick>=0) break; cur.pick=+d.k;
+      if(cur.opts[cur.pick].ok){Q.score++;Q.streak++;Q.bestStreak=Math.max(Q.bestStreak,Q.streak);} else Q.streak=0;
+      renderQuiz(); break; }
+    case 'qnext': Q.i++; renderQuiz(); break;
+    case 'qrestart': startQuiz(); break;
+    case 'oadd': O.pool=O.pool.filter(x=>x!==+d.si); O.seq.push(+d.si); renderOrder(); break;
+    case 'orm': { const si=O.seq.splice(+d.pos,1)[0]; O.pool.push(si); renderOrder(); break; }
+    case 'ocheck': O.checked=true; renderOrder(); break;
+    case 'orestart': startOrder(); break;
+  }
+});
+
+renderLearn();
+</script>
+</body>
+</html>
